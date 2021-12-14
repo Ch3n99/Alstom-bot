@@ -723,7 +723,7 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
     chiam = Ticket.select().join(Chiamata, on=(Ticket.id == Chiamata.idticket)).where(Chiamata.id == msg).execute()
     # seleziono DTP corretto
     dtps = Dtp.get(Dtp.sede == dtpname)
-    man=Manutentore.select(Manutentore.id).where(Manutentore.iddtp==dtps.id)
+    man=Manutentore.select().where(Manutentore.iddtp==dtps.id)
     if (man.exists()):
         toShow = "Manutentori disponibili:\n\n"
         for i in man:
@@ -818,15 +818,21 @@ def inserttc(update: Update, context: CallbackContext) -> int:
         #inserimento nella tabella chiamata
         chiamata = Chiamata(idticket=last_ticket.id, idguasto=guasto.id, manutentore=nome_man, data=dataora, descrizione=descr, numero_manutentore=numero_man)
         chiamata.save()
-        toShow = "Inserimento ticket avvenuto correttamente\nDigita /start per ricominciare o /cancel per uscire\n"
+        toShow = "Inserimento ticket avvenuto correttamente\n"
+        messaggio2 ="Digita /start per ricominciare o /cancel per uscire\n"
     else:
         toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
     )
+    update.message.reply_text(
+        messaggio2,
+        reply_markup=ReplyKeyboardRemove(),
+    )
     db.close()
     return ConversationHandler.END
+
  
 #terminazione della conversazione
 def cancel(update: Update, context: CallbackContext) -> int:
