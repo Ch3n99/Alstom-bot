@@ -2,7 +2,6 @@
 # pylint: disable=C0116,W0613
 import json
 import logging, os
-import mysql.connector
 from peewee import *
 from datetime import datetime
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, Update
@@ -26,6 +25,7 @@ from telegram.ext import (
 from playhouse.db_url import connect
 # stringa di connessione al database
 db = connect('mysql://root:Pass1234@localhost:3306/prova')
+token="1999421296:AAEyNoV8fpxrUwKzihFGbUx26oyzYe9yLwA"
 
 
 
@@ -192,12 +192,11 @@ def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(
         "Usa /ricerca per ricercare degli apparati e i loro dettagli.\n"
         "Usa /ticketc per creare un nuovo ticket cliente.\n"
-        "Usa /inserimento_manutentore per assegnare un manutentore ad una chiamata.\n"
-        "Usa --- da fare"
+        "Usa /cancel per uscire in qualsiasi momento.\n"
     )
 
 def scelta(update: Update, context: CallbackContext) -> int:
-    toShow = "Scegliere se inserire campi manualmente o tramite QR Code\n"
+    toShow = "Scegliere se inserire campi manualmente o tramite QR Code\n, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     reply_keyboard = [['Tastiera', 'QR Code']]
     update.message.reply_text(
         toShow,
@@ -219,7 +218,7 @@ def ricerca(update: Update, context: CallbackContext) -> int:
         toShow = "DTP disponibili:\n\n"
         for dtp in dtps:
             toShow += "ID: " + str(dtp.id) + " - sede: " + dtp.sede + "\n"
-        toShow += "\nDigita un ID presente nella lista e invialo. \nDigita nuovamente /start se vuoi ricominciare."
+        toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
         update.message.reply_text(
             toShow,
             reply_markup=ReplyKeyboardRemove(),
@@ -227,7 +226,7 @@ def ricerca(update: Update, context: CallbackContext) -> int:
         db.close()
         return DTP
     else:
-        toShow="Inserire QR Code"
+        toShow="Inserire QR Code, altrimenti clicca su /start per ricominciare o /cancel per uscire"
         update.message.reply_text(
             toShow,
             reply_markup=ReplyKeyboardRemove(),
@@ -244,7 +243,7 @@ def dtpr(update: Update, context: CallbackContext) -> int:
         dtps = Dtp.get(Dtp.id == msg)
     except Dtp.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
         return DTP
@@ -253,7 +252,7 @@ def dtpr(update: Update, context: CallbackContext) -> int:
     toShow = "Impianti disponibili:\n\n"
     for impianto in impianti:
         toShow += "ID: " + str(impianto.id) + " - impianto: " + impianto.impianto + "\n"
-    toShow += "\nDigita un ID presente nella lista e invialo."
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -271,7 +270,7 @@ def impiantor(update: Update, context: CallbackContext) -> int:
         imp = Impianti.get((Impianti.iddtp == msg) & (Impianti.id == msg2))
     except Impianti.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -281,7 +280,7 @@ def impiantor(update: Update, context: CallbackContext) -> int:
     toShow = "Locali disponibili:\n\n"
     for locale in locali:
         toShow += "ID: " + str(locale.id) + " - locale: " + locale.locale + "\n"
-    toShow += "\nDigita un ID presente nella lista e invialo."
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -298,7 +297,7 @@ def localer(update: Update, context: CallbackContext) -> int:
         loc = Locale.get((Locale.iddtp == msg) & (Locale.idimpianto == msg2) & (Locale.id == msg3))
     except Locale.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -329,7 +328,7 @@ def qrricerca(update: Update, context: CallbackContext) -> int:
         data, _, _ = qrDecoder.detectAndDecode(inputImage)
     except:
         update.message.reply_text(
-            'Errore, riprova o clicca su /ricerca per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         return QRCODE
     res= format(data)
@@ -338,14 +337,14 @@ def qrricerca(update: Update, context: CallbackContext) -> int:
     	load=json.loads(res)
     except:
     	update.message.reply_text(
-            'Errore, riprova o clicca su /ricerca per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         );return QRCODE
     db.connect()
     try:
         loc = Locale.get((Locale.iddtp == load["iddtp"]) & (Locale.idimpianto == load["idimpianto"]) & (Locale.id == load["idlocale"]))
     except Locale.DoesNotExist:
         update.message.reply_text(
-            'Errore, locale non presente, riprova o clicca su /ricerca per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, locale non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
         return QRCODE
@@ -393,7 +392,7 @@ def ricercains(update: Update, context: CallbackContext) -> int:
         toShow = "DTP disponibili:\n\n"
         for dtp in dtps:
             toShow += "ID: " + str(dtp.id) + " - sede: " + dtp.sede + "\n"
-        toShow += "\nDigita un ID presente nella lista e invialo. \nDigita nuovamente /start se vuoi ricominciare."
+        toShow += "\nDigita un ID presente nella lista e invialo. \nDigita nuovamente /start per ricominciare o /cancel per uscire"
         update.message.reply_text(
             toShow,
             reply_markup=ReplyKeyboardRemove(),
@@ -417,7 +416,7 @@ def dtptc(update: Update, context: CallbackContext) -> int:
         dtps = Dtp.get(Dtp.id == dtp)
     except Dtp.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -429,14 +428,13 @@ def dtptc(update: Update, context: CallbackContext) -> int:
     toShow = "Impianti disponibili:\n\n"
     for impianto in impianti:
         toShow += "ID: " + str(impianto.id) + " - impianto: " + impianto.impianto + "\n"
-    toShow += "\nDigita un ID presente nella lista e invialo."
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
     )
     db.close()
     return IMPIANTO
-
 
 # inserimento impianto e visualizzazione risultati
 def impiantotc(update: Update, context: CallbackContext) -> int:
@@ -447,7 +445,7 @@ def impiantotc(update: Update, context: CallbackContext) -> int:
         imps = Impianti.get((Impianti.iddtp == dtp) & (Impianti.id == imp))
     except Impianti.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -462,7 +460,7 @@ def impiantotc(update: Update, context: CallbackContext) -> int:
     for locale in locali:
         toShow += "ID: " + str(locale.id) + " - locale: " + locale.locale + "\n"
         sysname = locale.tecnologia
-    toShow += "\nTipo sistema: " + sysname + "\nDigita un ID presente nella lista e invialo."
+    toShow += "\nTipo sistema: " + sysname + "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -481,7 +479,7 @@ def localetc(update: Update, context: CallbackContext) -> int:
         locs = Locale.get((Locale.iddtp == dtp) & (Locale.idimpianto == imp) & (Locale.id == loc))
     except Locale.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -496,7 +494,7 @@ def localetc(update: Update, context: CallbackContext) -> int:
     toShow = "Apparati disponibili:\n\n"
     for apparato in apparati:
         toShow += "ID: " + str(apparato.id) + " - APPARATO: " + apparato.apparato + "\n"
-    toShow += "\nDigita un ID presente nella lista e invialo."
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -513,7 +511,7 @@ def apparatotc(update: Update, context: CallbackContext) -> int:
         a = Apparato.get((Apparato.iddtp == dtp) & (Apparato.idimpianto == imp) & (Apparato.idlocale == loc) & (Apparato.id == app))
     except Apparato.DoesNotExist:
         update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -540,7 +538,7 @@ def apparatotc(update: Update, context: CallbackContext) -> int:
     for i in crit:
         toShow += "ID: " + str(i.id) + " - tipo: " + i.label + "\n"
         opz.append(i.label)
-    toShow += "\nSchiaccia il pulsante corrispondente"
+    toShow += "\nSchiaccia il pulsante corrispondente.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     reply_keyboard = [opz] #per inserimento criticità visualizzo opzioni su tastiera
     update.message.reply_text(
         toShow,
@@ -563,7 +561,7 @@ def qrins(update: Update, context: CallbackContext) -> int:
         data, _, _ = qrDecoder.detectAndDecode(inputImage)
     except:
         update.message.reply_text(
-            'Errore, riprova o clicca su /ricerca per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         return QRCODE
     res = format(data)
@@ -572,7 +570,7 @@ def qrins(update: Update, context: CallbackContext) -> int:
         load = json.loads(res)
     except:
         update.message.reply_text(
-            'Errore, riprova o clicca su /ricerca per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         return QRCODE
     db.connect()
@@ -580,7 +578,7 @@ def qrins(update: Update, context: CallbackContext) -> int:
         app=Apparato.get(Apparato.id==load["idapparato"] & Apparato.idlocale==load["idlocale"] & Apparato.idimpianto==load["idimpianto"] & Apparato.iddtp==load["iddtp"])
     except Apparato.DoesNotExist:
         update.message.reply_text(
-            'Errore, apparato non presente, riprova o clicca su /ricerca per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, apparato non presente, riprova o clicca su /start per ricominciare o su /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
         return QRCODE
@@ -619,7 +617,7 @@ def qrins(update: Update, context: CallbackContext) -> int:
     for i in crit:
         toShow += "ID: " + str(i.id) + " - tipo: " + i.label + "\n"
         opz.append(i.label)
-    toShow += "\nSchiaccia il pulsante corrispondente"
+    toShow += "\nSchiaccia il pulsante corrispondente, altrimenti clicca su /start per ricominciare o /cancel per uscire"
     reply_keyboard = [opz]  # per inserimento criticità visualizzo opzioni su tastiera
     update.message.reply_text(
         toShow,
@@ -644,7 +642,7 @@ def criticitatc(update: Update, context: CallbackContext) -> int:
             opz.append(i.label)
         reply_keyboard = [opz] #per inserimento criticità visualizzo opzioni su tastiera
         update.message.reply_text(
-            "Errore, criticità non presente, riprova o clicca su /start per ricominciare",
+            "Errore, criticità non presente, riprova o clicca su /start per ricominciare o /cancel per uscire",
             reply_markup=ReplyKeyboardMarkup(
                 reply_keyboard, one_time_keyboard=True, input_field_placeholder='Seleziona criticita'
             ),
@@ -661,7 +659,7 @@ def criticitatc(update: Update, context: CallbackContext) -> int:
     for i in causae:
         toShow += "ID: " + str(i.id) + "    - tipo: " + i.label + "\n"
         opz.append(i.id)
-    toShow += "\nSeleziona un evento presente nella lista e invialo."
+    toShow += "\nSeleziona un evento presente nella lista e invialo.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     reply_keyboard = [opz] #per inserimento cause visualizzo opzioni su tastiera
     update.message.reply_text(
         toShow,
@@ -682,7 +680,7 @@ def causaevtc(update: Update, context: CallbackContext) -> int:
         cause = Causa_evento.get(Causa_evento.id == causa)
     except Causa_evento.DoesNotExist:
         update.message.reply_text(
-            'Errore, causa non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, causa non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -693,7 +691,7 @@ def causaevtc(update: Update, context: CallbackContext) -> int:
     toShow += "elenco tipologie guasto:\n\n"
     for i in tipog:
         toShow += "ID: " + str(i.id) + "    - tipo: " + i.label + "\n"
-    toShow += "\nDigita un tipo di guasto presente nella lista e invialo."
+    toShow += "\nDigita un tipo di guasto presente nella lista e invialo.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -711,7 +709,7 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
         t = Tipo_guasto.get(Tipo_guasto.id == tipoguasto)
     except Tipo_guasto.DoesNotExist:
         update.message.reply_text(
-            'Errore, tipo guasto non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
+            'Errore, tipo guasto non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
 
@@ -721,7 +719,78 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
     statotc = Stato.get(Stato.stato_ticket == "Aperto dal cliente")
     stato = statotc.id
     toShow += "Stato guasto: " + statotc.stato_ticket + "\n"
-    toShow += "Digita conferma per procedere con l'inserimento del ticket oppure rifiuta per uscire\n"
+    # Query restituisce informazioni relative a Ticket della chiamata richiesta dell'utente
+    chiam = Ticket.select().join(Chiamata, on=(Ticket.id == Chiamata.idticket)).where(Chiamata.id == msg).execute()
+    # seleziono DTP corretto
+    dtps = Dtp.get(Dtp.sede == dtpname)
+    man=Manutentore.select(Manutentore.id).where(Manutentore.iddtp==dtps.id)
+    if (man.exists()):
+        toShow = "Manutentori disponibili:\n\n"
+        for i in man:
+            toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono:" + i.numero + "\n"
+        toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        db.close()
+        return MANUTENTORE
+    else:
+        toShow = "Non ci sono manutentori disponibili, termine conversazione. Clicca /start per ricominciare\n\n"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        db.close()
+        return ConversationHandler.END
+
+# inserimento del manutentore scelto dall'utente
+def ins_man(update: Update, context: CallbackContext) -> int:
+    global nome_man,numero_man
+    msg = update.message.text
+    db.connect()
+    try:
+        variabile = Manutentore.get(Manutentore.id == msg)
+    except Manutentore.DoesNotExist:
+        update.message.reply_text(
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
+        )
+        db.close()
+
+        return MANUTENTORE
+    manut_scelto = Manutentore.get(Manutentore.id == msg)
+    nome_man = manut_scelto.nome
+    numero_man = manut_scelto.numero
+    toShow = "Inserisci data e ora di inizio della chiamata nel formato dd/mm/yyyy hh:mm oppure schiaccia sul pulsante per selezionare la data e l'ora attuali.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire\n"
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M")
+    reply_keyboard = [[dt_string]]
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
+        ),
+    )
+    db.close()
+
+    return DATAORA
+
+# inserimento di data e ora
+def ins_dataora(update: Update, context: CallbackContext) -> int:
+    global dataora
+    dataora = update.message.text
+    toShow = "Inserisci una descrizione del problema riscontrato,\naltrimenti clicca su /start per ricominciare o /cancel per uscire"
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return DESCRIZIONE
+
+#inserimento descrizione
+def ins_descr(update: Update, context: CallbackContext) -> int:
+    global descr
+    descr = update.message.text
+    toShow = "Digita conferma per procedere con l'inserimento del ticket oppure rifiuta per uscire\n"
     reply_keyboard = [['Conferma', 'Rifiuta']]
     update.message.reply_text(
         toShow,
@@ -740,152 +809,18 @@ def inserttc(update: Update, context: CallbackContext) -> int:
         db.connect()
         #inserimento nella tabella ticket
         ticket = Ticket(dtp=dtpname, impianto=impname, tipo_sistema=sysname, criticita=crit, causa_evento=causa, stato=stato)
-        ticket.save();
+        ticket.save()
         last=Ticket.select().order_by(Ticket.id.desc()).limit(1)
         last_ticket = last.get()
         #inserimento nella tabella guasto
         guasto = Guasto(ticket_id=last_ticket.id, locale=locname, sottosistema=macrofam, apparato=appname, tipo_guasto=tipoguasto, tipo_guasto_altro="guasto noto", famigliaapparato=famapp, stato_guasto=stato)
         guasto.save()
         #inserimento nella tabella chiamata
-        chiamata = Chiamata(idticket=last_ticket.id, idguasto=guasto.id)
+        chiamata = Chiamata(idticket=last_ticket.id, idguasto=guasto.id, manutentore=nome_man, data=dataora, descrizione=descr, numero_manutentore=numero_man)
         chiamata.save()
-        toShow = "Inserimento ticket avvenuto correttamente\nDigita /start per ricominciare\n"
+        toShow = "Inserimento ticket avvenuto correttamente\nDigita /start per ricominciare o /cancel per uscire\n"
     else:
-        toShow = "Inserimento annullato\nDigita /start per ricominciare\n"
-    update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    db.close()
-    return ConversationHandler.END
-
-# comando per successivo inserimento manutentore
-# funzione per selezionare chiamate attualmente senza manutentore
-def rchiamata(update: Update, context: CallbackContext) -> int:
-    db.connect()
-    chiamata = Chiamata.select().where((Chiamata.manutentore.is_null())|(Chiamata.manutentore=="")).order_by(Chiamata.id.desc())
-    toShow = "Chiamate attive:\n\n"
-    for i in chiamata:
-        toShow += "ID: " + str(i.id) + " - Descrizione: " + i.descrizione + "\n"
-    toShow += "\nDigita un ID presente nella lista e invialo. \nDigita nuovamente /start se vuoi ricominciare."
-    update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-    db.close()
-
-    return CHIAMATA
-
-# funzione per cercare i manutentori disponibili per il dtp del ticket relativo alla chiamata
-def ric_man(update: Update, context: CallbackContext) -> int:
-    global msg
-    msg = update.message.text
-    db.connect()
-    try:
-        variabile = Chiamata.get(Chiamata.id == msg)
-    except Chiamata.DoesNotExist:
-        update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
-        )
-        db.close()
-
-        return CHIAMATA
-    # Query restituisce informazioni relative a Ticket della chiamata richiesta dell'utente
-    chiam=Ticket.select().join(Chiamata, on=(Ticket.id==Chiamata.idticket)).where(Chiamata.id==msg).execute()
-    sededtp=""
-    for i in chiam:
-        sededtp = i.dtp
-    if(sededtp==""):
-    	toShow = "Non ci sono manutentori disponibili\n\n"
-    	update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardRemove(),
-    	)
-    	db.close()
-    	return ConversationHandler.END
-    # ottenuta riga dtp relativo alla chiamata scelta dell'utente
-    dtps=Dtp.get(Dtp.sede==sededtp)
-    man= Manutentore.select().where(Manutentore.iddtp==dtps.id)
-    toShow = "Manutentori disponibili:\n\n"
-    for i in man:
-        toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono:"+ i.numero +"\n"
-    toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata"
-    update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    db.close()
-
-    return MANUTENTORE
-
-# inserimento del manutentore scelto dall'utente
-def ins_man(update: Update, context: CallbackContext) -> int:
-    global nome_man,numero_man
-    msg = update.message.text
-    db.connect()
-    try:
-        variabile = Manutentore.get(Manutentore.id == msg)
-    except Manutentore.DoesNotExist:
-        update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare', reply_markup=ReplyKeyboardRemove()
-        )
-        db.close()
-
-        return MANUTENTORE
-    manut_scelto = Manutentore.get(Manutentore.id == msg)
-    nome_man = manut_scelto.nome
-    numero_man = manut_scelto.numero
-    toShow = "Inserisci data e ora di inizio della chiamata nel formato dd/mm/yyyy hh:mm oppure schiaccia sul pulsante per selezionare la data e l'ora attuali\n"
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M")
-    reply_keyboard = [[dt_string]]
-    update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
-        ),
-    )
-    db.close()
-
-    return DATAORA
-
-# inserimento di data e ora
-def ins_dataora(update: Update, context: CallbackContext) -> int:
-    global dataora
-    dataora = update.message.text
-    toShow = "Inserisci una descrizione del problema riscontrato\n"
-    update.message.reply_text(
-        toShow,        
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    return DESCRIZIONE
-
-#inserimento descrizione
-def ins_descr(update: Update, context: CallbackContext) -> int:
-    global descr
-    descr = update.message.text
-    toShow = "Digita conferma per procedere con l'inserimento del ticket oppure rifiuta per uscire\n"
-    reply_keyboard = [['Conferma', 'Rifiuta']]
-    update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
-        ),
-    )
-    return UPDATE
-
-#opzioni per confermare o rifiutare l'update della chiamata con le nuove informazioni inserite
-def update_chiam(update: Update, context: CallbackContext) -> int:
-    scelta = update.message.text
-    if (scelta == "Conferma"):
-        db.connect()
-        #update della tabella chiamata
-        var=Chiamata.update(manutentore=nome_man, numero_manutentore=numero_man, data=dataora, descrizione=descr).where(Chiamata.id==msg)
-        var.execute()
-        toShow = "Aggiornamento chiamata avvenuto correttamente\nDigita /start per ricominciare\n"
-    else:
-        toShow = "Aggiornamento annullato\nDigita /start per ricominciare\n"
+        toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -905,7 +840,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
 def main() -> None:
     # Create the Updater and pass it your bot's token.
-    updater = Updater("1999421296:AAEyNoV8fpxrUwKzihFGbUx26oyzYe9yLwA")
+    updater = Updater(token)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -936,20 +871,10 @@ def main() -> None:
             CRITICITA: [MessageHandler(Filters.text & ~Filters.command, criticitatc)],
             CAUSAEVENTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, causaevtc)],
             TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, tipogtc)],
-            INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-        allow_reentry=True,
-    )
-    #gestione conversazione per inserimento voci manutentore
-    conv_handlerm = ConversationHandler(
-        entry_points=[CommandHandler('inserimento_manutentore', rchiamata)],
-        states={
-            CHIAMATA: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ric_man)],
             MANUTENTORE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ins_man)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
-            UPDATE: [MessageHandler(Filters.text & ~Filters.command, update_chiam)],
+            INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True,
@@ -959,7 +884,6 @@ def main() -> None:
 
     dispatcher.add_handler(conv_handlerr)
     dispatcher.add_handler(conv_handlertc)
-    dispatcher.add_handler(conv_handlerm)
 
     # Start the Bot
     updater.start_polling()
