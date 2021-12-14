@@ -158,7 +158,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# dichiaro variabili globali per ricerca e inserimento
+# dichiaro variabili globali
 msg = ""
 msg2 = ""
 dtp = ""
@@ -182,6 +182,7 @@ nome_man=""
 numero_man=""
 dataora=""
 descr=""
+idfamapp=""
 
 # dichiaro nomi degli stati che serviranno per il conversation handler
 DTP, IMPIANTO, QRCODE, LOCALE, APPARATO, CRITICITA, CAUSAEVENTO, TIPOGUASTO, INSERIMENTO , CHIAMATA, MANUTENTORE, DATAORA, DESCRIZIONE, UPDATE = range(14)
@@ -685,9 +686,12 @@ def causaevtc(update: Update, context: CallbackContext) -> int:
         db.close()
 
         return CAUSAEVENTO
+    global famapp,idfamapp
     causas = Causa_evento.get(Causa_evento.id == causa)
     toShow = "Hai selezionato l'opzione: " + str(causas.label) + "\n\n"
-    tipog = Tipo_guasto.select().order_by(Tipo_guasto.label.asc())
+    filtro = Famigliaapparato.get(Famigliaapparato.famiglia==famapp)
+    idfamapp=filtro.id
+    tipog = Tipo_guasto.select().where(Tipo_guasto.idfamiglia==idfamapp).order_by(Tipo_guasto.label.asc())
     toShow += "elenco tipologie guasto:\n\n"
     for i in tipog:
         toShow += "ID: " + str(i.id) + "    - tipo: " + i.label + "\n"
@@ -702,11 +706,13 @@ def causaevtc(update: Update, context: CallbackContext) -> int:
 
 #inserimento tipo guasto e stato ticket
 def tipogtc(update: Update, context: CallbackContext) -> int:
-    global tipoguasto, stato
+    global tipoguasto, stato, famapp,idfamapp
     tipoguasto = update.message.text
     db.connect()
+
     try:
-        t = Tipo_guasto.get(Tipo_guasto.id == tipoguasto)
+        t = Tipo_guasto.get(Tipo_guasto.id == tipoguasto & Tipo_guasto.idfamiglia==idfamapp)
+
     except Tipo_guasto.DoesNotExist:
         update.message.reply_text(
             'Errore, tipo guasto non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
@@ -815,21 +821,35 @@ def inserttc(update: Update, context: CallbackContext) -> int:
         #inserimento nella tabella guasto
         guasto = Guasto(ticket_id=last_ticket.id, locale=locname, sottosistema=macrofam, apparato=appname, tipo_guasto=tipoguasto, tipo_guasto_altro="guasto noto", famigliaapparato=famapp, stato_guasto=stato)
         guasto.save()
+        last = Guasto.select().order_by(Guasto.id.desc()).limit(1)
+        last_guasto = last.get()
         #inserimento nella tabella chiamata
         chiamata = Chiamata(idticket=last_ticket.id, idguasto=guasto.id, manutentore=nome_man, data=dataora, descrizione=descr, numero_manutentore=numero_man)
         chiamata.save()
+        last = Chiamata.select().order_by(Chiamata.id.desc()).limit(1)
+        last_chiamata = last.get()
         toShow = "Inserimento ticket avvenuto correttamente\n"
-        messaggio2 ="Digita /start per ricominciare o /cancel per uscire\n"
+        toShow3 = "/start per ricominciare\n/cancel per uscire"
+        toShow2 = "Riepilogo informazioni Ticket:\n ID:    "+str(last_ticket.id)+"\ndtp:    "+dtpname+"\nImpianto:    "   + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)+"\n\nRiepilogo informazioni Guasto:\nID:    " + str(last_guasto.id) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     "+"\n\nRiepilogo informazioni Chiamata:\nID:    " + str(last_chiamata.id) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man +"\n"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        update.message.reply_text(
+            toShow2,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        update.message.reply_text(
+            toShow3,
+            reply_markup=ReplyKeyboardRemove(),
+        )
     else:
         toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
-    update.message.reply_text(
+        update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
-    )
-    update.message.reply_text(
-        messaggio2,
-        reply_markup=ReplyKeyboardRemove(),
-    )
+        )
+
     db.close()
     return ConversationHandler.END
 
