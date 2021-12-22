@@ -762,7 +762,7 @@ def manut(update: Update, context: CallbackContext) -> int:
             toShow,
             reply_markup=ReplyKeyboardRemove(),
         )
-        return NOME _MAN
+        return NOME_MAN
     else:
         toShow = "Termine conversazione\n"
         update.message.reply_text(
@@ -802,7 +802,6 @@ def numero_manut(update: Update, context: CallbackContext) -> int:
 def man_conferma(update: Update, context: CallbackContext) -> int:
     msg = update.message.text
     if (msg =="Conferma"):
-
         manutentore= Manutentore(nome=nome_man, iddtp=iddtp, numero=numero_man)
         manutentore.save()
         toShow = "Inserisci data e ora di inizio della chiamata nel formato dd/mm/yyyy hh:mm oppure schiaccia sul pulsante per selezionare la data e l'ora attuali.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire\n"
@@ -837,7 +836,6 @@ def ins_man(update: Update, context: CallbackContext) -> int:
             'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
         )
         db.close()
-
         return MANUTENTORE
     manut_scelto = Manutentore.get(Manutentore.id == msg)
     nome_man = manut_scelto.nome
