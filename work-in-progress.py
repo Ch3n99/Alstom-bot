@@ -183,10 +183,10 @@ numero_man=""
 dataora=""
 descr=""
 idfamapp=""
+iddtp=""
 
 # dichiaro nomi degli stati che serviranno per il conversation handler
-DTP, IMPIANTO, QRCODE, LOCALE, APPARATO, CRITICITA, CAUSAEVENTO, TIPOGUASTO, INSERIMENTO , CHIAMATA, MANUTENTORE, DATAORA, DESCRIZIONE, UPDATE = range(14)
-SCELTA = range(1)
+DTP, IMPIANTO, QRCODE, LOCALE, APPARATO, CRITICITA, CAUSAEVENTO, TIPOGUASTO, INSERIMENTO , CHIAMATA, MANUTENTORE, DATAORA, DESCRIZIONE, UPDATE, SCELTA, NUOVO_MAN, NOME_MAN, NUMERO_MAN, SCELTA_MAN = range(19)
 
 # funzione start con menu di riepilogo
 def start(update: Update, context: CallbackContext) -> None:
@@ -742,13 +742,88 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
         db.close()
         return MANUTENTORE
     else:
-        toShow = "Non ci sono manutentori disponibili, termine conversazione. Clicca /start per ricominciare\n\n"
+        toShow = "Non ci sono manutentori disponibili. Clicca aggiungi per inserire un nuovo manuntentore o  esci per uscire\n\n"
+        reply_keyboard = [['Aggiungi', 'Esci']]
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard=True, input_field_placeholder='Aggiungi o esci'
+            ),
+        )
+        db.close()
+        return NUOVO_MAN
+
+#inserimento nuovo manutentore nel DB
+def manut(update: Update, context: CallbackContext) -> int:
+    msg = update.message.text
+    if(msg=="Aggiungi"):
+        toShow= "Inserire nome e cognome del manuntentore.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
         update.message.reply_text(
             toShow,
             reply_markup=ReplyKeyboardRemove(),
         )
-        db.close()
+        return NOME _MAN
+    else:
+        toShow = "Termine conversazione\n"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
         return ConversationHandler.END
+
+#inserimento nome manutentore
+def nome_manut(update: Update, context: CallbackContext) -> int:
+    global dtpname, iddtp, nome_man
+    nome_man = update.message.text
+    dtp=Dtp.get(Dtp.sede==dtpname)
+    iddtp=dtp.id
+    toShow = "inserire numero di telefono.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return NUMERO_MAN
+
+#inserimento numero manutentore
+def numero_manut(update: Update, context: CallbackContext) -> int:
+    global numero_man
+    numero_man = update.message.text
+    toShow = "Digita conferma per procedere con l'inserimento del manutentore oppure rifiuta per uscire\n"
+    reply_keyboard = [['Conferma', 'Rifiuta']]
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
+        ),
+    )
+    return SCELTA_MAN
+
+#conferma inserimento manutentore
+def man_conferma(update: Update, context: CallbackContext) -> int:
+    msg = update.message.text
+    if (msg =="Conferma"):
+
+        manutentore= Manutentore(nome=nome_man, iddtp=iddtp, numero=numero_man)
+        manutentore.save()
+        toShow = "Inserisci data e ora di inizio della chiamata nel formato dd/mm/yyyy hh:mm oppure schiaccia sul pulsante per selezionare la data e l'ora attuali.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire\n"
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M")
+        reply_keyboard = [[dt_string]]
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
+            ),
+        )
+        db.close()
+        return DATAORA
+    else:
+        toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return NUOVO_MAN
 
 # inserimento del manutentore scelto dall'utente
 def ins_man(update: Update, context: CallbackContext) -> int:
@@ -804,7 +879,6 @@ def ins_descr(update: Update, context: CallbackContext) -> int:
             reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
         ),
     )
-    db.close()
 
     return INSERIMENTO
 
@@ -897,6 +971,10 @@ def main() -> None:
             CRITICITA: [MessageHandler(Filters.text & ~Filters.command, criticitatc)],
             CAUSAEVENTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, causaevtc)],
             TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, tipogtc)],
+            NUOVO_MAN: [MessageHandler(Filters.text & ~Filters.command, manut)],
+            NOME_MAN: [MessageHandler(Filters.text & ~Filters.command, nome_manut)],
+            NUMERO_MAN: [MessageHandler(Filters.text & ~Filters.command, numero_manut)],
+            SCELTA_MAN: [MessageHandler(Filters.text & ~Filters.command, man_conferma)],
             MANUTENTORE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ins_man)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
