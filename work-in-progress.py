@@ -695,7 +695,7 @@ def causaevtc(update: Update, context: CallbackContext) -> int:
     toShow += "elenco tipologie guasto:\n\n"
     for i in tipog:
         toShow += "ID: " + str(i.id) + "    - tipo: " + i.label + "\n"
-    toShow += "\nDigita un tipo di guasto presente nella lista e invialo.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
+    toShow += "\nDigita l'ID di un tipo di guasto presente nella lista e invialo.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -711,7 +711,7 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
     db.connect()
 
     try:
-        t = Tipo_guasto.get(Tipo_guasto.id == tipoguasto & Tipo_guasto.idfamiglia==idfamapp)
+        t = Tipo_guasto.get((Tipo_guasto.id == tipoguasto) & (Tipo_guasto.idfamiglia==idfamapp))
 
     except Tipo_guasto.DoesNotExist:
         update.message.reply_text(
@@ -904,7 +904,7 @@ def inserttc(update: Update, context: CallbackContext) -> int:
         last_chiamata = last.get()
         toShow = "Inserimento ticket avvenuto correttamente\n"
         toShow3 = "/start per ricominciare\n/cancel per uscire"
-        toShow2 = "Riepilogo informazioni Ticket:\n ID:    "+str(last_ticket.id)+"\ndtp:    "+dtpname+"\nImpianto:    "   + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)+"\n\nRiepilogo informazioni Guasto:\nID:    " + str(last_guasto.id) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     "+"\n\nRiepilogo informazioni Chiamata:\nID:    " + str(last_chiamata.id) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man +"\n"
+        toShow2 = "Riepilogo informazioni Ticket:\nID:    "+str(last_ticket.id)+"\ndtp:    "+dtpname+"\nImpianto:    "   + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)+"\n\nRiepilogo informazioni Guasto:\nID:    " + str(last_guasto.id) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     "+"\n\nRiepilogo informazioni Chiamata:\nID:    " + str(last_chiamata.id) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man +"\n"
         update.message.reply_text(
             toShow,
             reply_markup=ReplyKeyboardRemove(),
