@@ -184,6 +184,7 @@ dataora=""
 descr=""
 idfamapp=""
 iddtp=""
+tg=""
 
 # dichiaro nomi degli stati che serviranno per il conversation handler
 DTP, IMPIANTO, QRCODE, LOCALE, APPARATO, CRITICITA, CAUSAEVENTO, TIPOGUASTO, INSERIMENTO , CHIAMATA, MANUTENTORE, DATAORA, DESCRIZIONE, UPDATE, SCELTA, NUOVO_MAN, NOME_MAN, NUMERO_MAN, SCELTA_MAN = range(19)
@@ -928,7 +929,7 @@ def inserttc(update: Update, context: CallbackContext) -> int:
 
 def filtro_imp(update: Update, context: CallbackContext) -> int:
     db.connect()
-    guasti_aperti= Impianti.select().join(Ticket, on=(Impianti.impianto==Ticket.impianto)).join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where((Guasto.stato_guasto==0) | (Guasto.stato_guasto==3)).group_by(Impianti.id)
+    guasti_aperti= Impianti.select().join(Ticket, on=(Impianti.impianto==Ticket.impianto)).join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where((Ticket.stato==0) | (Ticket.stato==3)).group_by(Impianti.id)
     toShow = "Elenco impianti con almeno un guasto aperto:\n\n"
     for i in guasti_aperti:
         toShow += "ID: " + str(i.id) + " - impianto: " + i.impianto + "\n"
@@ -944,9 +945,19 @@ def filtro_tg(update: Update, context: CallbackContext) -> int:
     global imp
     imp = update.message.text
     db.connect()
+    controllo = Impianti.select().join(Ticket, on=(Impianti.impianto == Ticket.impianto)).join(Guasto, on=(
+    Ticket.id == Guasto.ticket_id)).where(((Ticket.stato == 0) | (Ticket.stato==3)) & (Impianti.id==imp))
+    if(not(controllo.exists())):
+        update.message.reply_text(
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
+            reply_markup=ReplyKeyboardRemove()
+        )
+        db.close()
+        return IMPIANTO
+
     imp_scelto = Impianti.get(Impianti.id == imp)
     imp=imp_scelto.impianto
-    guasti_aperti= Tipo_guasto.select().join(Guasto, on=(Guasto.tipo_guasto == Tipo_guasto.id)).join(Ticket, on=(Ticket.id == Guasto.ticket_id)).where(((Guasto.stato_guasto==0) | (Guasto.stato_guasto==3)) & (Ticket.impianto==imp)).group_by(Tipo_guasto.id)
+    guasti_aperti= Tipo_guasto.select().join(Guasto, on=(Guasto.tipo_guasto == Tipo_guasto.id)).join(Ticket, on=(Ticket.id == Guasto.ticket_id)).where(((Ticket.stato==0) | (Ticket.stato==3)) & (Ticket.impianto==imp)).group_by(Tipo_guasto.id)
     toShow = "Elenco tipologie guasto per le quali è presente almeno un guasto aperto:\n\n"
     for i in guasti_aperti:
         toShow += "ID: " + str(i.id) + " - tipo guasto: " + i.label + "\n"
@@ -959,11 +970,19 @@ def filtro_tg(update: Update, context: CallbackContext) -> int:
     return TIPOGUASTO
 
 def ticket_aperti(update: Update, context: CallbackContext) -> int:
-    global imp
+    global tg
     tg = update.message.text
     db.connect()
+    ticket_aperti = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(
+        ((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg))
+    if (not(ticket_aperti.exists())):
+        update.message.reply_text(
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
+            reply_markup=ReplyKeyboardRemove()
+        )
+        db.close()
+        return IMPIANTO
     tipoguasto=Tipo_guasto.get(Tipo_guasto.id==tg)
-    ticket_aperti= Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(((Ticket.stato==0) | (Ticket.stato==3)) & (Ticket.impianto==imp) & (Guasto.tipo_guasto==tg))
     toShow = "Elenco ticket aperti per l'impianto " + imp + " con tipo guasto " + tipoguasto.label + ":\n\n"
     for i in ticket_aperti:
         crit=Criticità.get(Criticità.id==i.criticita)
@@ -982,6 +1001,15 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
     global ticket
     ticket = update.message.text
     db.connect()
+    controllo = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(
+        ((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg) & (Ticket.id==ticket))
+    if (not(controllo.exists())):
+        update.message.reply_text(
+            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
+            reply_markup=ReplyKeyboardRemove()
+        )
+        db.close()
+        return IMPIANTO
     toShow = "Digita conferma per procedere con l'aggiunta di una nuova chiamata oppure rifiuta per uscire\n"
     reply_keyboard = [['Conferma', 'Rifiuta']]
     update.message.reply_text(
