@@ -193,6 +193,7 @@ def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(
         "Usa /ricerca per ricercare degli apparati e i loro dettagli.\n"
         "Usa /ticketc per creare un nuovo ticket cliente.\n"
+        "Usa /aggiungi_chiamata per aggiungere una chiamata ad un guasto già presente.\n"
         "Usa /cancel per uscire in qualsiasi momento.\n"
     )
 
@@ -925,6 +926,71 @@ def inserttc(update: Update, context: CallbackContext) -> int:
     db.close()
     return ConversationHandler.END
 
+def filtro_imp(update: Update, context: CallbackContext) -> int:
+    db.connect()
+    guasti_aperti= Impianti.select().join(Ticket, on=(Impianti.impianto==Ticket.impianto)).join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where((Guasto.stato_guasto==0) | (Guasto.stato_guasto==3)).group_by(Impianti.id)
+    toShow = "Elenco impianti con almeno un guasto aperto:\n\n"
+    for i in guasti_aperti:
+        toShow += "ID: " + str(i.id) + " - impianto: " + i.impianto + "\n"
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    db.close()
+    return IMPIANTO
+
+def filtro_tg(update: Update, context: CallbackContext) -> int:
+    global imp
+    imp = update.message.text
+    db.connect()
+    imp_scelto = Impianti.get(Impianti.id == imp)
+    imp=imp_scelto.impianto
+    guasti_aperti= Tipo_guasto.select().join(Guasto, on=(Guasto.tipo_guasto == Tipo_guasto.id)).join(Ticket, on=(Ticket.id == Guasto.ticket_id)).where(((Guasto.stato_guasto==0) | (Guasto.stato_guasto==3)) & (Ticket.impianto==imp)).group_by(Tipo_guasto.id)
+    toShow = "Elenco tipologie guasto per le quali è presente almeno un guasto aperto:\n\n"
+    for i in guasti_aperti:
+        toShow += "ID: " + str(i.id) + " - tipo guasto: " + i.label + "\n"
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    db.close()
+    return TIPOGUASTO
+
+def ticket_aperti(update: Update, context: CallbackContext) -> int:
+    global imp
+    tg = update.message.text
+    db.connect()
+    tipoguasto=Tipo_guasto.get(Tipo_guasto.id==tg)
+    ticket_aperti= Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(((Ticket.stato==0) | (Ticket.stato==3)) & (Ticket.impianto==imp) & (Guasto.tipo_guasto==tg))
+    toShow = "Elenco ticket aperti per l'impianto " + imp + " con tipo guasto " + tipoguasto.label + ":\n\n"
+    for i in ticket_aperti:
+        crit=Criticità.get(Criticità.id==i.criticita)
+        causaev=Causa_evento.get(Causa_evento.id==i.causa_evento)
+        stato=Stato.get(Stato.id==i.stato)
+        toShow += "ID: " + str(i.id) + "\nDTP: " + i.dtp + "\nTipo sistema: " + i.tipo_sistema + "\nCriticità: " + crit.label + "\nCausa_evento: " + causaev.label + "\nStato: " + stato.stato_ticket + "\n\n"
+    toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    db.close()
+    return SCELTA
+
+def agg_chiam(update: Update, context: CallbackContext) -> int:
+    global ticket
+    ticket = update.message.text
+    db.connect()
+    toShow = "Digita conferma per procedere con l'aggiunta di una nuova chiamata oppure rifiuta per uscire\n"
+    reply_keyboard = [['Conferma', 'Rifiuta']]
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
+        ),
+    )
+    return MANUTENTORE
  
 #terminazione della conversazione
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -982,10 +1048,23 @@ def main() -> None:
         allow_reentry=True,
     )
 
+    #gestione della conversazione aggiungi_chiamata con uso di stati
+    conv_handlerc = ConversationHandler(
+        entry_points=[CommandHandler('aggiungi_chiamata', filtro_imp)],
+        states={
+            IMPIANTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, filtro_tg)],
+            TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ticket_aperti)],
+            SCELTA: [MessageHandler(Filters.text & ~Filters.command, agg_chiam)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+        allow_reentry=True,
+    )
+
     dispatcher.add_handler(CommandHandler("start", start))
 
     dispatcher.add_handler(conv_handlerr)
     dispatcher.add_handler(conv_handlertc)
+    dispatcher.add_handler(conv_handlerc)
 
     # Start the Bot
     updater.start_polling()
