@@ -185,9 +185,10 @@ descr=""
 idfamapp=""
 iddtp=""
 tg=""
+k=0
 
 # dichiaro nomi degli stati che serviranno per il conversation handler
-DTP, IMPIANTO, QRCODE, LOCALE, APPARATO, CRITICITA, CAUSAEVENTO, TIPOGUASTO, INSERIMENTO , CHIAMATA, MANUTENTORE, DATAORA, DESCRIZIONE, UPDATE, SCELTA, NUOVO_MAN, NOME_MAN, NUMERO_MAN, SCELTA_MAN = range(19)
+DTP, IMPIANTO, QRCODE, LOCALE, APPARATO, CRITICITA, CAUSAEVENTO, TIPOGUASTO, INSERIMENTO , CHIAMATA, MANUTENTORE, DATAORA, DESCRIZIONE, UPDATE, SCELTA, NUOVO_MAN, NOME_MAN, NUMERO_MAN, SCELTA_MAN, TICKET = range(20)
 
 # funzione start con menu di riepilogo
 def start(update: Update, context: CallbackContext) -> None:
@@ -779,7 +780,7 @@ def nome_manut(update: Update, context: CallbackContext) -> int:
     nome_man = update.message.text
     dtp=Dtp.get(Dtp.sede==dtpname)
     iddtp=dtp.id
-    toShow = "inserire numero di telefono.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
+    toShow = "Inserire numero di telefono.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
@@ -871,7 +872,10 @@ def ins_dataora(update: Update, context: CallbackContext) -> int:
 def ins_descr(update: Update, context: CallbackContext) -> int:
     global descr
     descr = update.message.text
-    toShow = "Digita conferma per procedere con l'inserimento del ticket oppure rifiuta per uscire\n"
+    if(k==0):
+        toShow = "Digita conferma per procedere con l'inserimento del ticket oppure rifiuta per uscire\n"
+    else:
+        toShow = "Digita conferma per procedere con l'inserimento della chiamata oppure rifiuta per uscire\n"
     reply_keyboard = [['Conferma', 'Rifiuta']]
     update.message.reply_text(
         toShow,
@@ -884,39 +888,50 @@ def ins_descr(update: Update, context: CallbackContext) -> int:
 
 #opzioni per confermare o rifiutare l'inserimento
 def inserttc(update: Update, context: CallbackContext) -> int:
+    global ticket,guasto
     scelta = update.message.text
     if (scelta == "Conferma"):
         db.connect()
-        #inserimento nella tabella ticket
-        ticket = Ticket(dtp=dtpname, impianto=impname, tipo_sistema=sysname, criticita=crit, causa_evento=causa, stato=stato)
-        ticket.save()
-        last=Ticket.select().order_by(Ticket.id.desc()).limit(1)
-        last_ticket = last.get()
-        #inserimento nella tabella guasto
-        guasto = Guasto(ticket_id=last_ticket.id, locale=locname, sottosistema=macrofam, apparato=appname, tipo_guasto=tipoguasto, tipo_guasto_altro="guasto noto", famigliaapparato=famapp, stato_guasto=stato)
-        guasto.save()
-        last = Guasto.select().order_by(Guasto.id.desc()).limit(1)
-        last_guasto = last.get()
+        if(k==0):
+            #inserimento nella tabella ticket
+            ticket = Ticket(dtp=dtpname, impianto=impname, tipo_sistema=sysname, criticita=crit, causa_evento=causa, stato=stato)
+            ticket.save()
+            last=Ticket.select().order_by(Ticket.id.desc()).limit(1)
+            last_ticket = last.get()
+            ticket=last_ticket.id
+            #inserimento nella tabella guasto
+            guasto = Guasto(ticket_id=last_ticket.id, locale=locname, sottosistema=macrofam, apparato=appname, tipo_guasto=tipoguasto, tipo_guasto_altro="guasto noto", famigliaapparato=famapp, stato_guasto=stato)
+            guasto.save()
+            last = Guasto.select().order_by(Guasto.id.desc()).limit(1)
+            last_guasto = last.get()
+            guasto=last_guasto.id
         #inserimento nella tabella chiamata
-        chiamata = Chiamata(idticket=last_ticket.id, idguasto=guasto.id, manutentore=nome_man, data=dataora, descrizione=descr, numero_manutentore=numero_man)
+        chiamata = Chiamata(idticket=ticket, idguasto=guasto, manutentore=nome_man, data=dataora, descrizione=descr, numero_manutentore=numero_man)
         chiamata.save()
         last = Chiamata.select().order_by(Chiamata.id.desc()).limit(1)
         last_chiamata = last.get()
-        toShow = "Inserimento ticket avvenuto correttamente\n"
-        toShow3 = "/start per ricominciare\n/cancel per uscire"
-        toShow2 = "Riepilogo informazioni Ticket:\nID:    "+str(last_ticket.id)+"\ndtp:    "+dtpname+"\nImpianto:    "   + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)+"\n\nRiepilogo informazioni Guasto:\nID:    " + str(last_guasto.id) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     "+"\n\nRiepilogo informazioni Chiamata:\nID:    " + str(last_chiamata.id) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man +"\n"
-        update.message.reply_text(
-            toShow,
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        update.message.reply_text(
-            toShow2,
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        update.message.reply_text(
-            toShow3,
-            reply_markup=ReplyKeyboardRemove(),
-        )
+        if(k==0):
+            toShow = "Inserimento ticket avvenuto correttamente\n"
+            toShow3 = "/start per ricominciare\n/cancel per uscire"
+            toShow2 = "Riepilogo informazioni Ticket:\nID:    "+str(last_ticket.id)+"\ndtp:    "+dtpname+"\nImpianto:    " + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)+"\n\nRiepilogo informazioni Guasto:\nID:    " + str(last_guasto.id) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     "+"\n\nRiepilogo informazioni Chiamata:\nID:    " + str(last_chiamata.id) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man +"\n"
+            update.message.reply_text(
+                toShow,
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            update.message.reply_text(
+                toShow2,
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            update.message.reply_text(
+                toShow3,
+                reply_markup=ReplyKeyboardRemove(),
+            )
+        else:
+            toShow = "Chiamata inserita correttamente\n"
+            update.message.reply_text(
+                toShow,
+                reply_markup=ReplyKeyboardRemove(),
+            )
     else:
         toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
         update.message.reply_text(
@@ -927,6 +942,7 @@ def inserttc(update: Update, context: CallbackContext) -> int:
     db.close()
     return ConversationHandler.END
 
+#mostra gli impianti per i quali c'è almeno un guasto aperto
 def filtro_imp(update: Update, context: CallbackContext) -> int:
     db.connect()
     guasti_aperti= Impianti.select().join(Ticket, on=(Impianti.impianto==Ticket.impianto)).join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where((Ticket.stato==0) | (Ticket.stato==3)).group_by(Impianti.id)
@@ -941,12 +957,14 @@ def filtro_imp(update: Update, context: CallbackContext) -> int:
     db.close()
     return IMPIANTO
 
+#deve mostrare i tipi di guasto possibili tra i guasti aperti per l'impianto appena scelto
 def filtro_tg(update: Update, context: CallbackContext) -> int:
     global imp
     imp = update.message.text
     db.connect()
     controllo = Impianti.select().join(Ticket, on=(Impianti.impianto == Ticket.impianto)).join(Guasto, on=(
-    Ticket.id == Guasto.ticket_id)).where(((Ticket.stato == 0) | (Ticket.stato==3)) & (Impianti.id==imp))
+    Ticket.id == Guasto.ticket_id)).where(((Ticket.stato == 0) | (Ticket.stato == 3)) & (Impianti.id==imp))
+    #verifico se la query di controllo è vuota
     if(not(controllo.exists())):
         update.message.reply_text(
             'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
@@ -969,12 +987,14 @@ def filtro_tg(update: Update, context: CallbackContext) -> int:
     db.close()
     return TIPOGUASTO
 
+#mostra i ticket aperti sulla base di impianto e tipo guasto
 def ticket_aperti(update: Update, context: CallbackContext) -> int:
     global tg
     tg = update.message.text
     db.connect()
     ticket_aperti = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(
         ((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg))
+    # verifico se la query di controllo è vuota
     if (not(ticket_aperti.exists())):
         update.message.reply_text(
             'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
@@ -995,14 +1015,17 @@ def ticket_aperti(update: Update, context: CallbackContext) -> int:
         reply_markup=ReplyKeyboardRemove(),
     )
     db.close()
-    return SCELTA
+    return TICKET
 
 def agg_chiam(update: Update, context: CallbackContext) -> int:
-    global ticket
+    global ticket, guasto
     ticket = update.message.text
     db.connect()
+    riga_guasto=Guasto.get(Guasto.ticket_id==ticket)
+    guasto=riga_guasto.id
     controllo = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(
         ((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg) & (Ticket.id==ticket))
+    # verifico se la query di controllo è vuota
     if (not(controllo.exists())):
         update.message.reply_text(
             'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
@@ -1018,7 +1041,35 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
             reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
         ),
     )
-    return MANUTENTORE
+    db.close()
+    return SCELTA
+
+def nuova_call(update: Update, context: CallbackContext) -> int:
+    global k
+    msg = update.message.text
+    if(msg == "Conferma"):
+        db.connect()
+        k=1
+        imp_scelto = Impianti.get(Impianti.impianto == imp)
+        elenco = Manutentore.select().where(Manutentore.iddtp == imp_scelto.iddtp)
+        dtp_scelto=Dtp.get(Dtp.id==imp_scelto.iddtp)
+        toShow = "Elenco manutentori per " + dtp_scelto.sede + ":\n"
+        for i in elenco:
+            toShow += "ID: " + str(i.id) + "\nNome: " + i.nome + "\nNumero: " + i.numero + "\n\n"
+        toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        db.close()
+        return MANUTENTORE
+    else:
+        toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return ConversationHandler.END
  
 #terminazione della conversazione
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -1044,8 +1095,7 @@ def main() -> None:
             QRCODE: [MessageHandler(Filters.photo & ~Filters.command, qrricerca)],
             DTP: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, dtpr)],
             IMPIANTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, impiantor)],
-            LOCALE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, localer)],
-
+            LOCALE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, localer)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True,
@@ -1070,7 +1120,7 @@ def main() -> None:
             MANUTENTORE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ins_man)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
-            INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)],
+            INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True,
@@ -1082,7 +1132,12 @@ def main() -> None:
         states={
             IMPIANTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, filtro_tg)],
             TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ticket_aperti)],
-            SCELTA: [MessageHandler(Filters.text & ~Filters.command, agg_chiam)]
+            TICKET: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, agg_chiam)],
+            SCELTA: [MessageHandler(Filters.text & ~Filters.command, nuova_call)],
+            MANUTENTORE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ins_man)],
+            DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
+            DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
+            INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True,
