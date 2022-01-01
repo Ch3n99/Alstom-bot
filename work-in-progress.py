@@ -734,30 +734,26 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
     dtps = Dtp.get(Dtp.sede == dtpname)
     man=Manutentore.select().where(Manutentore.iddtp==dtps.id)
     if (man.exists()):
-        toShow = "Manutentori disponibili:\n\n"
+        toShow = "Manutentori disponibili per " + dtpname + ":\n"
         for i in man:
             toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono:" + i.numero + "\n"
-        toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
-        update.message.reply_text(
-            toShow,
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        db.close()
-        return MANUTENTORE
+        toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata oppure aggiungi un nuovo manutentore schiacciando l'apposito pulsante."
+        toShow +="\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     else:
-        toShow = "Non ci sono manutentori disponibili. Clicca aggiungi per inserire un nuovo manuntentore o  esci per uscire\n\n"
-        reply_keyboard = [['Aggiungi', 'Esci']]
-        update.message.reply_text(
-            toShow,
-            reply_markup=ReplyKeyboardMarkup(
-                reply_keyboard, one_time_keyboard=True, input_field_placeholder='Aggiungi o esci'
-            ),
-        )
-        db.close()
-        return NUOVO_MAN
+        toShow = "Non ci sono manutentori disponibili. Clicca aggiungi per inserire un nuovo manuntentore o digita /cancel per uscire\n\n"
+    reply_keyboard = [['Aggiungi']]
+    update.message.reply_text(
+        toShow,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Aggiungi o scegli manutentore'
+        ),
+    )
+    db.close()
+    return MANUTENTORE
 
-#inserimento nuovo manutentore nel DB
+#inserimento nuovo manutentore nel DB oppure scelta di uno esistente
 def manut(update: Update, context: CallbackContext) -> int:
+    global msg
     msg = update.message.text
     if(msg=="Aggiungi"):
         toShow= "Inserire nome e cognome del manuntentore.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
@@ -767,16 +763,37 @@ def manut(update: Update, context: CallbackContext) -> int:
         )
         return NOME_MAN
     else:
-        toShow = "Termine conversazione\n"
+        global nome_man, numero_man
+        db.connect()
+        try:
+            variabile = Manutentore.get(Manutentore.id == msg)
+        except Manutentore.DoesNotExist:
+            update.message.reply_text(
+                'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire',
+                reply_markup=ReplyKeyboardRemove()
+            )
+            db.close()
+            return MANUTENTORE
+        manut_scelto = Manutentore.get(Manutentore.id == msg)
+        nome_man = manut_scelto.nome
+        numero_man = manut_scelto.numero
+        toShow = "Inserisci data e ora di inizio della chiamata nel formato dd/mm/yyyy hh:mm oppure schiaccia sul pulsante per selezionare la data e l'ora attuali.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire\n"
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M")
+        reply_keyboard = [[dt_string]]
         update.message.reply_text(
             toShow,
-            reply_markup=ReplyKeyboardRemove(),
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
+            ),
         )
-        return ConversationHandler.END
+        db.close()
+
+        return DATAORA
 
 #inserimento nome manutentore
 def nome_manut(update: Update, context: CallbackContext) -> int:
-    global dtpname, iddtp, nome_man
+    global iddtp, nome_man
     nome_man = update.message.text
     dtp=Dtp.get(Dtp.sede==dtpname)
     iddtp=dtp.id
@@ -826,36 +843,6 @@ def man_conferma(update: Update, context: CallbackContext) -> int:
             reply_markup=ReplyKeyboardRemove(),
         )
         return NUOVO_MAN
-
-# inserimento del manutentore scelto dall'utente
-def ins_man(update: Update, context: CallbackContext) -> int:
-    global nome_man,numero_man
-    msg = update.message.text
-    db.connect()
-    try:
-        variabile = Manutentore.get(Manutentore.id == msg)
-    except Manutentore.DoesNotExist:
-        update.message.reply_text(
-            'Errore, id non presente, riprova o clicca su /start per ricominciare o /cancel per uscire', reply_markup=ReplyKeyboardRemove()
-        )
-        db.close()
-        return MANUTENTORE
-    manut_scelto = Manutentore.get(Manutentore.id == msg)
-    nome_man = manut_scelto.nome
-    numero_man = manut_scelto.numero
-    toShow = "Inserisci data e ora di inizio della chiamata nel formato dd/mm/yyyy hh:mm oppure schiaccia sul pulsante per selezionare la data e l'ora attuali.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire\n"
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M")
-    reply_keyboard = [[dt_string]]
-    update.message.reply_text(
-        toShow,
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Conferma o rifiuta'
-        ),
-    )
-    db.close()
-
-    return DATAORA
 
 # inserimento di data e ora
 def ins_dataora(update: Update, context: CallbackContext) -> int:
@@ -910,10 +897,13 @@ def inserttc(update: Update, context: CallbackContext) -> int:
         chiamata.save()
         last = Chiamata.select().order_by(Chiamata.id.desc()).limit(1)
         last_chiamata = last.get()
+        chiamata = last_chiamata.id
         if(k==0):
             toShow = "Inserimento ticket avvenuto correttamente\n"
             toShow3 = "/start per ricominciare\n/cancel per uscire"
-            toShow2 = "Riepilogo informazioni Ticket:\nID:    "+str(last_ticket.id)+"\ndtp:    "+dtpname+"\nImpianto:    " + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)+"\n\nRiepilogo informazioni Guasto:\nID:    " + str(last_guasto.id) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     "+"\n\nRiepilogo informazioni Chiamata:\nID:    " + str(last_chiamata.id) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man +"\n"
+            toShow2 = "Riepilogo informazioni Ticket:\nID:    "+str(ticket)+"\ndtp:    "+dtpname+"\nImpianto:    " + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)
+            toShow2 +="\n\nRiepilogo informazioni Guasto:\nID:    " + str(guasto) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     " + famapp
+            toShow2 +="\n\nRiepilogo informazioni Chiamata:\nID:    " + str(chiamata) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man + "\n"
             update.message.reply_text(
                 toShow,
                 reply_markup=ReplyKeyboardRemove(),
@@ -1053,13 +1043,20 @@ def nuova_call(update: Update, context: CallbackContext) -> int:
         imp_scelto = Impianti.get(Impianti.impianto == imp)
         elenco = Manutentore.select().where(Manutentore.iddtp == imp_scelto.iddtp)
         dtp_scelto=Dtp.get(Dtp.id==imp_scelto.iddtp)
-        toShow = "Elenco manutentori per " + dtp_scelto.sede + ":\n"
-        for i in elenco:
-            toShow += "ID: " + str(i.id) + "\nNome: " + i.nome + "\nNumero: " + i.numero + "\n\n"
-        toShow += "\nDigita un ID presente nella lista e invialo, altrimenti clicca su /start per ricominciare o /cancel per uscire"
+        if (elenco.exists()):
+            toShow = "Manutentori disponibili per " + dtp_scelto.sede + ":\n"
+            for i in elenco:
+                toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono:" + i.numero + "\n"
+            toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata oppure aggiungi un nuovo manutentore schiacciando l'apposito pulsante."
+            toShow += "\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
+        else:
+            toShow = "Non ci sono manutentori disponibili. Clicca aggiungi per inserire un nuovo manuntentore o digita /cancel per uscire\n\n"
+        reply_keyboard = [['Aggiungi']]
         update.message.reply_text(
             toShow,
-            reply_markup=ReplyKeyboardRemove(),
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard=True, input_field_placeholder='Aggiungi o scegli manutentore'
+            ),
         )
         db.close()
         return MANUTENTORE
@@ -1113,11 +1110,10 @@ def main() -> None:
             CRITICITA: [MessageHandler(Filters.text & ~Filters.command, criticitatc)],
             CAUSAEVENTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, causaevtc)],
             TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, tipogtc)],
-            NUOVO_MAN: [MessageHandler(Filters.text & ~Filters.command, manut)],
+            MANUTENTORE: [MessageHandler(Filters.text & ~Filters.command, manut)],
             NOME_MAN: [MessageHandler(Filters.text & ~Filters.command, nome_manut)],
             NUMERO_MAN: [MessageHandler(Filters.text & ~Filters.command, numero_manut)],
             SCELTA_MAN: [MessageHandler(Filters.text & ~Filters.command, man_conferma)],
-            MANUTENTORE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ins_man)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
             INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)]
@@ -1134,7 +1130,7 @@ def main() -> None:
             TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ticket_aperti)],
             TICKET: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, agg_chiam)],
             SCELTA: [MessageHandler(Filters.text & ~Filters.command, nuova_call)],
-            MANUTENTORE: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, ins_man)],
+            MANUTENTORE: [MessageHandler(Filters.text & ~Filters.command, manut)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
             INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)]
