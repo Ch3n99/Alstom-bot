@@ -1050,7 +1050,8 @@ def nuova_call(update: Update, context: CallbackContext) -> int:
             toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata oppure aggiungi un nuovo manutentore schiacciando l'apposito pulsante."
             toShow += "\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
         else:
-            toShow = "Non ci sono manutentori disponibili. Clicca aggiungi per inserire un nuovo manuntentore o digita /cancel per uscire\n\n"
+            toShow = "Non ci sono manutentori disponibili. Clicca aggiungi per inserire un nuovo manuntentore."
+            toShow += "\nAltrimenti clicca su /start per ricominciare o /cancel per uscire\n\n"
         reply_keyboard = [['Aggiungi']]
         update.message.reply_text(
             toShow,
