@@ -909,7 +909,7 @@ def inserttc(update: Update, context: CallbackContext) -> int:
             info_guasto=Guasto.get(Guasto.id==guasto)
             chiamate = Chiamata.select().where(Chiamata.idticket==ticket)
             toShow = "Inserimento chiamata avvenuta correttamente\n"
-            toShow2 = "ID Ticket:" +str(ticket)+"\nInformazione guasto   :\nLocale:"+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto" + str(info_guasto.stato_guasto)
+            toShow2 = "ID Ticket:    " +str(ticket)+"\nInformazione guasto   :\nLocale:    "+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto:    " + str(info_guasto.stato_guasto)
             toShow2 += "\n\nRiepilogo informazioni chiamate:"
             for i in chiamate:
                 toShow2 += "\n\nManutentore:  " + i.manutentore + "\nData:  " + str(i.data) + "\nDescrizione:  " + i.descrizione + "\nNumero Manutentore:  " + str(i.numero_manutentore)
@@ -1014,8 +1014,6 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
     global ticket, guasto
     ticket = update.message.text
     db.connect()
-    riga_guasto = Guasto.get(Guasto.ticket_id==ticket)
-    guasto = riga_guasto.id
     controllo = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg) & (Ticket.id == ticket))
     # verifico se la query di controllo è vuota
     if (not(controllo.exists())):
@@ -1025,6 +1023,8 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
         )
         db.close()
         return IMPIANTO
+    riga_guasto = Guasto.get(Guasto.ticket_id == ticket)
+    guasto = riga_guasto.id
     toShow = "Digita conferma per procedere con l'aggiunta di una nuova chiamata oppure rifiuta per uscire\n"
     reply_keyboard = [['Conferma', 'Rifiuta']]
     update.message.reply_text(
