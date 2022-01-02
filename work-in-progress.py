@@ -736,7 +736,7 @@ def tipogtc(update: Update, context: CallbackContext) -> int:
     if (man.exists()):
         toShow = "Manutentori disponibili per " + dtpname + ":\n"
         for i in man:
-            toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono:" + i.numero + "\n"
+            toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono: " + i.numero + "\n"
         toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata oppure aggiungi un nuovo manutentore schiacciando l'apposito pulsante."
         toShow +="\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
     else:
@@ -756,7 +756,7 @@ def manut(update: Update, context: CallbackContext) -> int:
     global msg
     msg = update.message.text
     if(msg=="Aggiungi"):
-        toShow= "Inserire nome e cognome del manuntentore.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
+        toShow= "Inserire nome e cognome del nuovo manuntentore.\nAltrimenti clicca su /start per ricominciare o /cancel per uscire"
         update.message.reply_text(
             toShow,
             reply_markup=ReplyKeyboardRemove(),
@@ -900,35 +900,38 @@ def inserttc(update: Update, context: CallbackContext) -> int:
         chiamata = last_chiamata.id
         if(k==0):
             toShow = "Inserimento ticket avvenuto correttamente\n"
-            toShow3 = "/start per ricominciare\n/cancel per uscire"
             toShow2 = "Riepilogo informazioni Ticket:\nID:    "+str(ticket)+"\ndtp:    "+dtpname+"\nImpianto:    " + impname+ "\nTipo_sistema:    " + sysname+ "\nCriticita:    " + str(crit)+ "\nCausa_evento:    " + str(causa) + "\nStato:    " + str(stato)
             toShow2 +="\n\nRiepilogo informazioni Guasto:\nID:    " + str(guasto) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     " + famapp
             toShow2 +="\n\nRiepilogo informazioni Chiamata:\nID:    " + str(chiamata) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man + "\n"
-            update.message.reply_text(
-                toShow,
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            update.message.reply_text(
-                toShow2,
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            update.message.reply_text(
-                toShow3,
-                reply_markup=ReplyKeyboardRemove(),
-            )
+            toShow3 = "/start per ricominciare\n/cancel per uscire"
+
         else:
-            toShow = "Chiamata inserita correttamente\n"
-            update.message.reply_text(
-                toShow,
-                reply_markup=ReplyKeyboardRemove(),
-            )
+            info_guasto=Guasto.get(Guasto.id==guasto)
+            chiamate = Chiamata.select().where(Chiamata.idticket==ticket)
+            toShow = "Inserimento chiamata avvenuta correttamente\n"
+            toShow2 = "ID Ticket:" +str(ticket)+"\nInformazione guasto   :\nLocale:"+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto" + str(info_guasto.stato_guasto)
+            toShow2 += "\n\nRiepilogo informazioni chiamate:"
+            for i in chiamate:
+                toShow2 += "\n\nManutentore:  " + i.manutentore + "\nData:  " + str(i.data) + "\nDescrizione:  " + i.descrizione + "\nNumero Manutentore:  " + str(i.numero_manutentore)
+            toShow3 = "/start per ricominciare\n/cancel per uscire"
+        update.message.reply_text(
+            toShow,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        update.message.reply_text(
+            toShow2,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        update.message.reply_text(
+            toShow3,
+            reply_markup=ReplyKeyboardRemove(),
+        )
     else:
         toShow = "Inserimento annullato\nDigita /start per ricominciare o /cancel per uscire\n"
         update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardRemove(),
         )
-
     db.close()
     return ConversationHandler.END
 
@@ -1011,10 +1014,9 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
     global ticket, guasto
     ticket = update.message.text
     db.connect()
-    riga_guasto=Guasto.get(Guasto.ticket_id==ticket)
-    guasto=riga_guasto.id
-    controllo = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(
-        ((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg) & (Ticket.id==ticket))
+    riga_guasto = Guasto.get(Guasto.ticket_id==ticket)
+    guasto = riga_guasto.id
+    controllo = Ticket.select().join(Guasto, on=(Ticket.id == Guasto.ticket_id)).where(((Ticket.stato == 0) | (Ticket.stato == 3)) & (Ticket.impianto == imp) & (Guasto.tipo_guasto == tg) & (Ticket.id == ticket))
     # verifico se la query di controllo è vuota
     if (not(controllo.exists())):
         update.message.reply_text(
@@ -1035,7 +1037,7 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
     return SCELTA
 
 def nuova_call(update: Update, context: CallbackContext) -> int:
-    global k
+    global k, dtpname
     msg = update.message.text
     if(msg == "Conferma"):
         db.connect()
@@ -1043,8 +1045,9 @@ def nuova_call(update: Update, context: CallbackContext) -> int:
         imp_scelto = Impianti.get(Impianti.impianto == imp)
         elenco = Manutentore.select().where(Manutentore.iddtp == imp_scelto.iddtp)
         dtp_scelto=Dtp.get(Dtp.id==imp_scelto.iddtp)
+        dtpname = dtp_scelto.sede
         if (elenco.exists()):
-            toShow = "Manutentori disponibili per " + dtp_scelto.sede + ":\n"
+            toShow = "Manutentori disponibili per " + dtpname + ":\n"
             for i in elenco:
                 toShow += "ID: " + str(i.id) + " - nome: " + i.nome + " - Telefono:" + i.numero + "\n"
             toShow += "\nScegli dalla lista l'id del manutentore per questa chiamata oppure aggiungi un nuovo manutentore schiacciando l'apposito pulsante."
@@ -1113,7 +1116,7 @@ def main() -> None:
             TIPOGUASTO: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, tipogtc)],
             MANUTENTORE: [MessageHandler(Filters.text & ~Filters.command, manut)],
             NOME_MAN: [MessageHandler(Filters.text & ~Filters.command, nome_manut)],
-            NUMERO_MAN: [MessageHandler(Filters.text & ~Filters.command, numero_manut)],
+            NUMERO_MAN: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, numero_manut)],
             SCELTA_MAN: [MessageHandler(Filters.text & ~Filters.command, man_conferma)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
@@ -1132,6 +1135,9 @@ def main() -> None:
             TICKET: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, agg_chiam)],
             SCELTA: [MessageHandler(Filters.text & ~Filters.command, nuova_call)],
             MANUTENTORE: [MessageHandler(Filters.text & ~Filters.command, manut)],
+            NOME_MAN: [MessageHandler(Filters.text & ~Filters.command, nome_manut)],
+            NUMERO_MAN: [MessageHandler(Filters.regex('^[0-9]*$') & ~Filters.command, numero_manut)],
+            SCELTA_MAN: [MessageHandler(Filters.text & ~Filters.command, man_conferma)],
             DATAORA: [MessageHandler(Filters.text & ~Filters.command, ins_dataora)],
             DESCRIZIONE: [MessageHandler(Filters.text & ~Filters.command, ins_descr)],
             INSERIMENTO: [MessageHandler(Filters.text & ~Filters.command, inserttc)]
