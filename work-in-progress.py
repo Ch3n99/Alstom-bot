@@ -131,7 +131,7 @@ class Chiamata(BaseModel):
     idguasto = IntegerField()
     after_sales_engineer = CharField(200)
     manutentore = CharField(200)
-    data = DateTimeField(formats=['%d/%m/%Y'])
+    data = DateTimeField()
     durata = IntegerField()
     descrizione = CharField(200)
     analisi_soluzione = CharField(200)
