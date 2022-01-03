@@ -126,13 +126,13 @@ class Guasto(BaseModel):
 
 
 class Chiamata(BaseModel):
-    id= IntegerField()
+    id = IntegerField()
     idticket = IntegerField()
     idguasto = IntegerField()
     after_sales_engineer = CharField(200)
     manutentore = CharField(200)
-    data = CharField(200)
-    durata = CharField(200)
+    data = DateTimeField(formats=['%d/%m/%Y'])
+    durata = IntegerField()
     descrizione = CharField(200)
     analisi_soluzione = CharField(200)
     numero_manutentore = CharField(200)
@@ -907,7 +907,7 @@ def inserttc(update: Update, context: CallbackContext) -> int:
 
         else:
             info_guasto=Guasto.get(Guasto.id==guasto)
-            chiamate = Chiamata.select().where(Chiamata.idticket==ticket)
+            chiamate = Chiamata.select().where(Chiamata.idticket==ticket).order_by(Chiamata.data.asc())
             toShow = "Inserimento chiamata avvenuta correttamente\n"
             toShow2 = "ID Ticket:    " +str(ticket)+"\nInformazione guasto   :\nLocale:    "+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto:    " + str(info_guasto.stato_guasto)
             toShow2 += "\n\nRiepilogo informazioni chiamate:"
