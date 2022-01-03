@@ -904,15 +904,14 @@ def inserttc(update: Update, context: CallbackContext) -> int:
             toShow2 +="\n\nRiepilogo informazioni Guasto:\nID:    " + str(guasto) + "\nLocale:     " + locname + "\nSottosistema:    "+macrofam + "\nApparato:   " + appname + "\nTipo_guasto:   " + tipoguasto + "\nFamiglia_apparato:     " + famapp
             toShow2 +="\n\nRiepilogo informazioni Chiamata:\nID:    " + str(chiamata) + "\nManuntentore:     " + nome_man + "\nData:     " + dataora + "\nDescrizione:    " + descr + "\nNumero_manuntentore:    " + numero_man + "\n"
             toShow3 = "/start per ricominciare\n/cancel per uscire"
-
         else:
             info_guasto=Guasto.get(Guasto.id==guasto)
-            chiamate = Chiamata.select().where(Chiamata.idticket==ticket).order_by(Chiamata.data.asc())
+            chiamate = Chiamata.select().where(Chiamata.idticket==ticket)
             toShow = "Inserimento chiamata avvenuta correttamente\n"
-            toShow2 = "ID Ticket:    " +str(ticket)+"\nInformazione guasto   :\nLocale:    "+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto:    " + str(info_guasto.stato_guasto)
+            toShow2 = "ID Ticket:    " +str(ticket)+"\nInformazione guasto:\nID:   " + str(info_guasto.id) + "Locale:    "+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto:    " + str(info_guasto.stato_guasto)
             toShow2 += "\n\nRiepilogo informazioni chiamate:"
             for i in chiamate:
-                toShow2 += "\n\nManutentore:  " + i.manutentore + "\nData:  " + str(i.data) + "\nDescrizione:  " + i.descrizione + "\nNumero Manutentore:  " + str(i.numero_manutentore)
+                toShow2 += "\n\nID:   " + str(i.id) + "Manutentore:  " + i.manutentore + "\nData:  " + str(i.data) + "\nDescrizione:  " + i.descrizione + "\nNumero Manutentore:  " + str(i.numero_manutentore)
             toShow3 = "/start per ricominciare\n/cancel per uscire"
         update.message.reply_text(
             toShow,
