@@ -908,10 +908,10 @@ def inserttc(update: Update, context: CallbackContext) -> int:
             info_guasto=Guasto.get(Guasto.id==guasto)
             chiamate = Chiamata.select().where(Chiamata.idticket==ticket)
             toShow = "Inserimento chiamata avvenuta correttamente\n"
-            toShow2 = "ID Ticket:    " +str(ticket)+"\nInformazione guasto:\nID:   " + str(info_guasto.id) + "\nLocale:    "+ info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto:    " + str(info_guasto.stato_guasto)
+            toShow2 = "ID Ticket:    " + str(ticket) + "\nInformazione guasto:\nID:   " + str(info_guasto.id) + "\nLocale:    " + info_guasto.locale +"\nSottosistema:   "+ info_guasto.sottosistema +"\nApparato:   "+info_guasto.apparato+"\nTipo guasto:   "+ info_guasto.tipo_guasto+"\nAltro:   "  + info_guasto.tipo_guasto_altro +  "\nFamiglia apparato:  " + info_guasto.famigliaapparato + "\nStato guasto:    " + str(info_guasto.stato_guasto)
             toShow2 += "\n\nRiepilogo informazioni chiamate:"
             for i in chiamate:
-                toShow2 += "\n\nID:   " + str(i.id) + "\nManutentore:  " + i.manutentore + "\nData:  " + str(i.data) + "\nDescrizione:  " + i.descrizione + "\nNumero Manutentore:  " + str(i.numero_manutentore)
+                toShow2 += "\n\nID:   " + str(i.id) + "\nManutentore:   " + str(i.manutentore) + "\nData:  " + str(i.data) + "\nDescrizione:  " + i.descrizione + "\nNumero Manutentore:  " + i.numero_manutentore
             toShow3 = "/start per ricominciare\n/cancel per uscire"
         update.message.reply_text(
             toShow,
