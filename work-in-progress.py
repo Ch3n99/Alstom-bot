@@ -1010,6 +1010,7 @@ def ticket_aperti(update: Update, context: CallbackContext) -> int:
     db.close()
     return TICKET
 
+#confermare o rifiutare la scelta
 def agg_chiam(update: Update, context: CallbackContext) -> int:
     global ticket, guasto
     ticket = update.message.text
@@ -1036,6 +1037,7 @@ def agg_chiam(update: Update, context: CallbackContext) -> int:
     db.close()
     return SCELTA
 
+#se l'utente ha confermato procedo con la scelta del manutentore
 def nuova_call(update: Update, context: CallbackContext) -> int:
     global k, dtpname
     msg = update.message.text
