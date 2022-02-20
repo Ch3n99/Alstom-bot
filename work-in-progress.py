@@ -205,7 +205,7 @@ def scelta(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         toShow,
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='tipo inserimeto'
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='tipo inserimento'
         ),
     )
     return SCELTA
